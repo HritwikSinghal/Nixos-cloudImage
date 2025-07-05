@@ -1,0 +1,50 @@
+name: Build Nixos Cloud Images
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nix
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v17
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - run: nix build ".#images.pve_kvm"
+
+      - run: ls -lah result/ && ls -lah .
+
+      - name: copy result to current dir & fix perms
+        run: |
+          sudo cp result/nixos.img . && sudo chmod -R 777 .
+
+      - run: ls -lah result/ && ls -lah .
+
+      ## https://github.com/actions/upload-artifact/issues/232#issuecomment-964235360
+      ## I found the problem, the upload-artifact action does not use the working-directory setting.
+      ## Neither does the create-release action.
+      - name: Upload NixOS Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: nixos-image
+          path: nix/nixos.img
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Latest NixOS Image
+          body: |
+            Latest NixOS cloud image built with Nix.
+          draft: false
+          prerelease: false
+          files: nix/nixos.img
