@@ -17,6 +17,7 @@ jobs:
         uses: cachix/install-nix-action@v17
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - run: nix flake update
       - run: nix build ".#images.pve_kvm"
 
       - run: ls -lah result/ && ls -lah .
