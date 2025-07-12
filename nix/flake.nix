@@ -37,6 +37,12 @@
                 "${toString modulesPath}/profiles/qemu-guest.nix" # needed, otherwise vm will get stuck on `waiting for device dev/disk/by-label/nixos`
               ];
 
+              # https://wiki.nixos.org/wiki/Accelerated_Video_Playback
+              hardware.graphics = {
+                enable = true;
+                enable32Bit = true;
+              };
+
               # These images are configured to log to the serial console, and not to your display. We override the image's default console=ttyS0.
               boot.kernelParams = lib.mkForce [ "console=tty0" ];
 
