@@ -56,7 +56,7 @@
               proxmox.partitionTableType = "efi";
               proxmox.qemuConf.bios = "ovmf"; # to fix the failed assertions.
 
-              system.stateVersion = "25.11";
+              system.stateVersion = "26.11";
 
               system.build.qcow = import "${toString modulesPath}/../lib/make-disk-image.nix" {
                 inherit lib config pkgs;
