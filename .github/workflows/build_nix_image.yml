@@ -14,10 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v17
+        # v17 (2022) installs a Nix too old for current nixos-unstable.
+        uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
-      - run: nix flake update
+      # Builds from the committed flake.lock so every release is reproducible and
+      # traceable to a nixpkgs rev. To pick up a newer nixpkgs: run
+      # `nix flake update` locally in nix/, commit flake.lock, then dispatch.
       - run: nix build ".#images.pve_kvm"
 
       - run: ls -lah result/ && ls -lah .
@@ -27,6 +30,22 @@ jobs:
           sudo cp result/nixos.img . && sudo chmod -R 777 .
 
       - run: ls -lah result/ && ls -lah .
+
+      # One release per build (never overwrite an old one), so terraform can pin
+      # url + checksum and roll back. Pushed v* tags keep their own name;
+      # dispatches get vYYYY.MM.DD.<run>.
+      - name: Checksum and release tag
+        id: meta
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          sha256sum nixos.img > nixos.img.sha256
+          cat nixos.img.sha256
+          if [ "$REF_TYPE" = "tag" ]; then tag="$REF_NAME"; else tag="v$(date -u +%Y.%m.%d).$RUN_NUMBER"; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "nixpkgs=$(jq -r .nodes.nixpkgs.locked.rev flake.lock)" >> "$GITHUB_OUTPUT"
 
       ## https://github.com/actions/upload-artifact/issues/232#issuecomment-964235360
       ## I found the problem, the upload-artifact action does not use the working-directory setting.
@@ -42,10 +61,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Latest NixOS Image
+          tag_name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: NixOS Image ${{ steps.meta.outputs.tag }}
           body: |
             Latest NixOS cloud image built with Nix.
+            nixpkgs: NixOS/nixpkgs@${{ steps.meta.outputs.nixpkgs }}
+            sha256: see nixos.img.sha256
           draft: false
           prerelease: false
-          files: nix/nixos.img
+          make_latest: true
+          files: |
+            nix/nixos.img
+            nix/nixos.img.sha256

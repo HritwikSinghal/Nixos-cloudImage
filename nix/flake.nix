@@ -37,11 +37,14 @@
                 "${toString modulesPath}/profiles/qemu-guest.nix" # needed, otherwise vm will get stuck on `waiting for device dev/disk/by-label/nixos`
               ];
 
+              # Off in the barebones image: VMs have no GPU passed through (~2 GiB of
+              # mesa + llvm for nothing). GPU drivers are enabled per host by the
+              # config deployed after first boot, not baked into the cloud image.
               # https://wiki.nixos.org/wiki/Accelerated_Video_Playback
-              hardware.graphics = {
-                enable = true;
-                enable32Bit = true;
-              };
+              # hardware.graphics = {
+              #   enable = true;
+              #   enable32Bit = true;
+              # };
 
               # These images are configured to log to the serial console, and not to your display. We override the image's default console=ttyS0.
               boot.kernelParams = lib.mkForce [ "console=tty0" ];
