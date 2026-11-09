@@ -56,6 +56,11 @@
               proxmox.partitionTableType = "efi";
               proxmox.qemuConf.bios = "ovmf"; # to fix the failed assertions.
 
+              # The ESP is 249M and each kernel+initrd pair is ~43M. GRUB keeps
+              # one pair per listed generation (default 100) and copies the new
+              # pair before deleting obsolete ones, so cap it: 3 + 1 in flight fits.
+              boot.loader.grub.configurationLimit = 3;
+
               system.stateVersion = "26.11";
 
               system.build.qcow = import "${toString modulesPath}/../lib/make-disk-image.nix" {
